@@ -177,14 +177,24 @@ class ViconClient(ViconClientBase):
             name = client.get_subject_name(i)
             if name is None:
                 continue
-
             body = self._get_rigid_body(client, name)
             if body is not None:
                 subjects[name] = body
                 for m in body.markers:
                     markers[f"{name}/{m.name}"] = m
 
-        return ViconFrame(timestamp=ts, subjects=subjects, markers=markers)
+        # Unlabeled markers — markers Vicon can see but hasn't assigned to a subject
+        unlabeled: List[Marker] = []
+        n_unlab = client.get_unlabeled_marker_count()
+        for i in range(n_unlab):
+            pos, occ = client.get_unlabeled_marker_global_translation(i)
+            if pos is not None:
+                unlabeled.append(Marker(name=f"unlabeled_{i}",
+                                        position=np.array(pos, dtype=float),
+                                        occluded=bool(occ)))
+
+        return ViconFrame(timestamp=ts, subjects=subjects, markers=markers,
+                          unlabeled_markers=unlabeled)
 
     def _get_rigid_body(self, client, subject: str) -> Optional[RigidBody]:
         trans, occ = client.get_segment_global_translation(subject, subject)
@@ -202,13 +212,11 @@ class ViconClient(ViconClientBase):
                 continue
             mpos, mocc = client.get_marker_global_translation(subject, mname)
             if mpos is not None:
-                mlist.append(
-                    Marker(
-                        name=mname,
-                        position=np.array(mpos, dtype=float),
-                        occluded=bool(mocc),
-                    )
-                )
+                mlist.append(Marker(name=mname,
+                                    position=np.array(mpos, dtype=float),
+                                    occluded=bool(mocc)))
+
+        quality = client.get_object_quality(subject)  # None if unavailable
 
         return RigidBody(
             name=subject,
@@ -216,6 +224,7 @@ class ViconClient(ViconClientBase):
             rotation_quat=np.array(rot, dtype=float),
             markers=mlist,
             occluded=bool(occ),
+            quality=quality,
         )
 
 

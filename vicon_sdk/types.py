@@ -72,6 +72,7 @@ class RigidBody:
     rotation_quat: np.ndarray
     markers: List[Marker] = field(default_factory=list)
     occluded: bool = False
+    quality: Optional[float] = None  # 0.0–1.0 from GetObjectQuality; None if unavailable
 
     @property
     def rotation_matrix(self) -> np.ndarray:
@@ -129,6 +130,7 @@ class ViconFrame:
     timestamp: float
     subjects: Dict[str, RigidBody] = field(default_factory=dict)
     markers: Dict[str, Marker] = field(default_factory=dict)  # key: "subject/marker"
+    unlabeled_markers: List[Marker] = field(default_factory=list)  # markers not assigned to any subject
 
     def subject(self, name: str) -> Optional[RigidBody]:
         """Return the RigidBody with *name*, or None if not tracked this frame."""

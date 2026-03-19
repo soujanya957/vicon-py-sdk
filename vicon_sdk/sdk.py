@@ -99,6 +99,12 @@ class _OutUInt(ctypes.Structure):
     _fields_ = [("Result", ctypes.c_int), ("Value", ctypes.c_uint)]
 
 
+class _OutDouble(ctypes.Structure):
+    # { Result(int), Value(double) } — _pack_=4 to match C SDK alignment
+    _pack_ = 4
+    _fields_ = [("Result", ctypes.c_int), ("Value", ctypes.c_double)]
+
+
 class _OutTranslation(ctypes.Structure):
     # _pack_=4: the C SDK uses 4-byte alignment, suppressing the padding
     # that ctypes would normally insert after the 4-byte Result int to
@@ -195,6 +201,32 @@ def _configure(lib: ctypes.CDLL) -> None:
     lib.Client_GetMarkerGlobalTranslation.argtypes = [vp, cp, cp, pT]
     lib.Client_GetSegmentGlobalRotationQuaternion.restype = None
     lib.Client_GetSegmentGlobalRotationQuaternion.argtypes = [vp, cp, cp, pQ]
+
+    # local-frame pose (relative to parent segment)
+    lib.Client_GetSegmentLocalTranslation.restype = None
+    lib.Client_GetSegmentLocalTranslation.argtypes = [vp, cp, cp, pT]
+    lib.Client_GetSegmentLocalRotationQuaternion.restype = None
+    lib.Client_GetSegmentLocalRotationQuaternion.argtypes = [vp, cp, cp, pQ]
+
+    # connection / frame info
+    lib.Client_IsConnected.restype = i
+    lib.Client_IsConnected.argtypes = [vp]
+    lib.Client_WaitForFrame.restype = i
+    lib.Client_WaitForFrame.argtypes = [vp]
+
+    pD = ctypes.POINTER(_OutDouble)
+    lib.Client_GetFrameRate.restype = None
+    lib.Client_GetFrameRate.argtypes = [vp, pD]
+
+    # subject quality (0.0 – 1.0)
+    lib.Client_GetObjectQuality.restype = None
+    lib.Client_GetObjectQuality.argtypes = [vp, cp, pD]
+
+    # unlabeled markers (markers not assigned to any subject)
+    lib.Client_GetUnlabeledMarkerCount.restype = None
+    lib.Client_GetUnlabeledMarkerCount.argtypes = [vp, pU]
+    lib.Client_GetUnlabeledMarkerGlobalTranslation.restype = None
+    lib.Client_GetUnlabeledMarkerGlobalTranslation.argtypes = [vp, ui, pT]
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +381,84 @@ class ViconSDKClient:
         out = _OutTranslation()
         self._lib.Client_GetMarkerGlobalTranslation(
             self._h, subject.encode(), marker.encode(), ctypes.byref(out)
+        )
+        if out.Result != SUCCESS:
+            return None, True
+        return list(out.Translation), bool(out.Occluded)
+
+    # ── local-frame pose ─────────────────────────────────────────────────────
+
+    def get_segment_local_translation(
+        self, subject: str, segment: str
+    ) -> Tuple[Optional[list], bool]:
+        """Returns ([x, y, z] in mm, occluded) in the parent segment's frame."""
+        out = _OutTranslation()
+        self._lib.Client_GetSegmentLocalTranslation(
+            self._h, subject.encode(), segment.encode(), ctypes.byref(out)
+        )
+        if out.Result != SUCCESS:
+            return None, True
+        return list(out.Translation), bool(out.Occluded)
+
+    def get_segment_local_rotation_quaternion(
+        self, subject: str, segment: str
+    ) -> Tuple[Optional[list], bool]:
+        """Returns ([qx, qy, qz, qw], occluded) in the parent segment's frame."""
+        out = _OutQuaternion()
+        self._lib.Client_GetSegmentLocalRotationQuaternion(
+            self._h, subject.encode(), segment.encode(), ctypes.byref(out)
+        )
+        if out.Result != SUCCESS:
+            return None, True
+        return list(out.Rotation), bool(out.Occluded)
+
+    # ── connection / frame info ───────────────────────────────────────────────
+
+    def is_connected(self) -> bool:
+        """Return True if currently connected to a Vicon server."""
+        return bool(self._lib.Client_IsConnected(self._h))
+
+    def wait_for_frame(self) -> int:
+        """
+        Block until the next frame is available from the server.
+        More efficient than polling get_frame() in SERVER_PUSH / CLIENT_PULL_PREFETCH modes.
+        Returns result code (SUCCESS=2).
+        """
+        return self._lib.Client_WaitForFrame(self._h)
+
+    def get_frame_rate(self) -> Optional[float]:
+        """Return the server capture rate in Hz, or None on failure."""
+        out = _OutDouble()
+        self._lib.Client_GetFrameRate(self._h, ctypes.byref(out))
+        return out.Value if out.Result == SUCCESS else None
+
+    def get_object_quality(self, subject: str) -> Optional[float]:
+        """
+        Return the tracking quality of *subject* in [0.0, 1.0], or None on failure.
+        Higher is better; values below ~0.3 indicate poor marker visibility.
+        """
+        out = _OutDouble()
+        self._lib.Client_GetObjectQuality(self._h, subject.encode(), ctypes.byref(out))
+        return out.Value if out.Result == SUCCESS else None
+
+    # ── unlabeled markers ────────────────────────────────────────────────────
+
+    def get_unlabeled_marker_count(self) -> int:
+        """Return the number of unlabeled markers in the current frame."""
+        out = _OutUInt()
+        self._lib.Client_GetUnlabeledMarkerCount(self._h, ctypes.byref(out))
+        return out.Value if out.Result == SUCCESS else 0
+
+    def get_unlabeled_marker_global_translation(
+        self, index: int
+    ) -> Tuple[Optional[list], bool]:
+        """
+        Return ([x, y, z] in mm, occluded) for unlabeled marker at *index*.
+        Valid index range: 0 .. get_unlabeled_marker_count()-1
+        """
+        out = _OutTranslation()
+        self._lib.Client_GetUnlabeledMarkerGlobalTranslation(
+            self._h, index, ctypes.byref(out)
         )
         if out.Result != SUCCESS:
             return None, True
