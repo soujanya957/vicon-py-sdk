@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vicon-sdk"
+version = "0.1.0"
+description = "Python client for the Vicon DataStream SDK — thread-safe, zero-dependency streaming"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.8"
+dependencies = ["numpy>=1.21"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-timeout"]
+
+[project.urls]
+Repository = "https://github.com/YOUR_USERNAME/vicon-py-sdk"
+Issues     = "https://github.com/YOUR_USERNAME/vicon-py-sdk/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vicon_sdk*"]
