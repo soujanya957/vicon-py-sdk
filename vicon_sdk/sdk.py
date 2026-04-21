@@ -211,8 +211,11 @@ def _configure(lib: ctypes.CDLL) -> None:
     # connection / frame info
     lib.Client_IsConnected.restype = i
     lib.Client_IsConnected.argtypes = [vp]
-    lib.Client_WaitForFrame.restype = i
-    lib.Client_WaitForFrame.argtypes = [vp]
+    try:
+        lib.Client_WaitForFrame.restype = i
+        lib.Client_WaitForFrame.argtypes = [vp]
+    except AttributeError:
+        pass  # older SDK builds omit this symbol; wait_for_frame() will raise if called
 
     pD = ctypes.POINTER(_OutDouble)
     lib.Client_GetFrameRate.restype = None

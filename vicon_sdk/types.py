@@ -131,6 +131,8 @@ class ViconFrame:
     subjects: Dict[str, RigidBody] = field(default_factory=dict)
     markers: Dict[str, Marker] = field(default_factory=dict)  # key: "subject/marker"
     unlabeled_markers: List[Marker] = field(default_factory=list)  # markers not assigned to any subject
+    frame_number: Optional[int] = None
+    frame_rate: Optional[float] = None
 
     def subject(self, name: str) -> Optional[RigidBody]:
         """Return the RigidBody with *name*, or None if not tracked this frame."""

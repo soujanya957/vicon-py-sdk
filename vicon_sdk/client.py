@@ -155,6 +155,7 @@ class ViconClient(ViconClientBase):
             )
         client.enable_segment_data()
         client.enable_marker_data()
+        client.enable_unlabeled_marker_data()
         client.set_stream_mode(CLIENT_PULL)
         logger.info("[Vicon] Connected to %s.", self.host)
 
@@ -194,7 +195,9 @@ class ViconClient(ViconClientBase):
                                         occluded=bool(occ)))
 
         return ViconFrame(timestamp=ts, subjects=subjects, markers=markers,
-                          unlabeled_markers=unlabeled)
+                          unlabeled_markers=unlabeled,
+                          frame_number=client.get_frame_number(),
+                          frame_rate=client.get_frame_rate())
 
     def _get_rigid_body(self, client, subject: str) -> Optional[RigidBody]:
         trans, occ = client.get_segment_global_translation(subject, subject)
