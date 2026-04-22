@@ -30,6 +30,19 @@ Then install the SDK library (see [USAGE.md](USAGE.md)):
 bash scripts/install_sdk.sh
 ```
 
+> **macOS:** The script copies all `.dylib` files from the SDK folder.
+> `libViconDataStreamSDK_C.dylib` depends on `libViconDataStreamSDK_CPP.dylib` —
+> both must be present in `vicon_sdk/` or the library will fail to load.
+>
+> If you see `Library not loaded: libViconDataStreamSDK_CPP.dylib`, copy all
+> `.dylib` files manually:
+> ```bash
+> cp /path/to/Mac/*.dylib vicon_sdk/
+> ```
+>
+> Also ensure your macOS version is not older than what the SDK was compiled for
+> (`built for macOS X.X` in the error means your OS is too old).
+
 ---
 
 ## Connection

@@ -77,11 +77,28 @@ if [ ! -f "$SRC" ]; then
     exit 1
 fi
 
-# ── Copy ──────────────────────────────────────────────────────────────────
-cp "$SRC" "$DEST/$LIB"
+# ── Copy all shared libraries (C lib depends on CPP lib at runtime) ────────
+case "$UNAME" in
+    Darwin*)   GLOB="*.dylib" ;;
+    Linux*)    GLOB="*.so*"   ;;
+    *)         GLOB="*.dll"   ;;
+esac
+
+copied=0
+for f in "$SRC_DIR"/$GLOB; do
+    [ -f "$f" ] || continue
+    cp "$f" "$DEST/"
+    echo "Installed: $f"
+    copied=$((copied + 1))
+done
+
+if [ "$copied" -eq 0 ]; then
+    echo "ERROR: No shared libraries found in $SRC_DIR"
+    exit 1
+fi
+
 echo ""
-echo "Installed: $SRC"
-echo "       to: $DEST/$LIB"
+echo "Copied $copied file(s) to $DEST"
 echo ""
 echo "You're all set. Test it:"
 echo "  python -c \"from vicon_sdk import ViconClient; print('OK')\""
