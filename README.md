@@ -19,7 +19,7 @@ with ViconClient("192.168.1.10:801") as client:
 ## Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/vicon-py-sdk.git
+git clone https://github.com/soujanya957/vicon-py-sdk.git
 cd vicon-py-sdk
 pip install -e .
 ```
